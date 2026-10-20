@@ -7,6 +7,11 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField, Min(0f)] private float speed = 5f;
     [SerializeField, Min(0f)] private float jumpHeight = 1.8f;
+    [SerializeField, Min(0f)] private float coyoteTime = 0.1f;
+    [SerializeField, Min(0f)] private float jumpBuffer = 0.12f;
+    [SerializeField, Min(1f)] private float fallMultiplier = 2.2f;
+
+    public bool IsGrounded => isGrounded;
 
     private Rigidbody rb;
     private InputAction moveAction;
@@ -14,6 +19,8 @@ public class PlayerController : MonoBehaviour
     private Vector3 move;
     private bool jumpQueued;
     private bool isGrounded;
+    private float lastGroundedTime = -1f;
+    private float lastPressedTime = -1f;
     private readonly HashSet<Collider> groundContacts = new HashSet<Collider>();
     private Vector3 groundPoint;
     private Vector3 groundNormal = Vector3.up;
@@ -42,6 +49,7 @@ public class PlayerController : MonoBehaviour
         jumpQueued = false;
         groundContacts.Clear();
         isGrounded = false;
+        lastGroundedTime = lastPressedTime = -1f;
     }
 
     private void Update()
@@ -51,8 +59,21 @@ public class PlayerController : MonoBehaviour
         move = Vector3.ClampMagnitude(new Vector3(input.x, 0f, input.y), 1f);
         isGrounded = groundContacts.Count > 0;
 
-        if (isGrounded && !jumpQueued && jumpAction.WasPressedThisFrame())
+        // Stamp only while supported and not departing the surface after a jump.
+        // Dot uses the ground normal so walking uphill still counts as supported.
+        if (isGrounded && !jumpQueued && Vector3.Dot(rb.linearVelocity, groundNormal) <= 0.1f)
+            lastGroundedTime = Time.time;
+
+        if (jumpAction.WasPressedThisFrame())
+            lastPressedTime = Time.time;
+
+        bool canJump = lastGroundedTime >= 0f && Time.time - lastGroundedTime <= coyoteTime;
+        bool wantJump = lastPressedTime >= 0f && Time.time - lastPressedTime <= jumpBuffer;
+        if (!jumpQueued && canJump && wantJump)
+        {
             jumpQueued = true;
+            lastGroundedTime = lastPressedTime = -1f;
+        }
     }
 
     private void FixedUpdate()
@@ -70,6 +91,10 @@ public class PlayerController : MonoBehaviour
             groundContacts.Clear();
             isGrounded = false;
         }
+
+        // Normal gravity handles ascent; add only the extra acceleration on descent.
+        if (rb.linearVelocity.y < 0f)
+            rb.AddForce(Physics.gravity * (fallMultiplier - 1f), ForceMode.Acceleration);
     }
 
     private void OnCollisionEnter(Collision collision) => UpdateGroundContact(collision);
