@@ -1486,6 +1486,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1297044439168599189, guid: 26d8845d30107964badee40e253e3c46, type: 3}
+      propertyPath: offset.y
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 1297044439168599189, guid: 26d8845d30107964badee40e253e3c46, type: 3}
+      propertyPath: offset.z
+      value: -2.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 1297044439168599189, guid: 26d8845d30107964badee40e253e3c46, type: 3}
+      propertyPath: lookAhead
+      value: 0.1
+      objectReference: {fileID: 0}
     - target: {fileID: 4362022561928501390, guid: 26d8845d30107964badee40e253e3c46, type: 3}
       propertyPath: m_Name
       value: FollowCamera
@@ -1529,6 +1541,10 @@ PrefabInstance:
     - target: {fileID: 6286678882036634083, guid: 26d8845d30107964badee40e253e3c46, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 90
+      objectReference: {fileID: 0}
+    - target: {fileID: 8710153372978065762, guid: 26d8845d30107964badee40e253e3c46, type: 3}
+      propertyPath: field of view
+      value: 75
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

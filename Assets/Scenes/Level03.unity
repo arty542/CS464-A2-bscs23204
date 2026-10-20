@@ -1153,7 +1153,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2397008554849518829, guid: 690a878768f630447878e0a194484182, type: 3}
       propertyPath: squashY
-      value: 0.5
+      value: 0.85
       objectReference: {fileID: 0}
     - target: {fileID: 6974464232487481873, guid: 690a878768f630447878e0a194484182, type: 3}
       propertyPath: m_LocalPosition.x
@@ -2328,10 +2328,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1297044439168599189, guid: 26d8845d30107964badee40e253e3c46, type: 3}
-      propertyPath: autoRecenter
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 4362022561928501390, guid: 26d8845d30107964badee40e253e3c46, type: 3}
       propertyPath: m_Name
       value: FollowCamera

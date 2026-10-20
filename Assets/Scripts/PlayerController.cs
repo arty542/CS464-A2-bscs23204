@@ -14,6 +14,7 @@ public class PlayerController : MonoBehaviour
     public bool IsGrounded => isGrounded;
 
     private Rigidbody rb;
+    private Transform cam;
     private InputAction moveAction;
     private InputAction jumpAction;
     private Vector3 move;
@@ -29,6 +30,7 @@ public class PlayerController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        cam = Camera.main.transform;
         rb.freezeRotation = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         moveAction = InputSystem.actions.FindAction("Player/Move", true);
@@ -56,7 +58,14 @@ public class PlayerController : MonoBehaviour
     {
         // Read input every rendered frame, so a short Space press is not lost.
         Vector2 input = moveAction.ReadValue<Vector2>();
-        move = Vector3.ClampMagnitude(new Vector3(input.x, 0f, input.y), 1f);
+        // Lecture 05: project the camera axes onto the ground before combining input.
+        Vector3 forward = cam.forward;
+        forward.y = 0f;
+        forward.Normalize();
+        Vector3 right = cam.right;
+        right.y = 0f;
+        right.Normalize();
+        move = Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
         isGrounded = groundContacts.Count > 0;
 
         // Stamp only while supported and not departing the surface after a jump.
