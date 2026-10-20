@@ -1,0 +1,145 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+[RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider))]
+public class PlayerController : MonoBehaviour
+{
+    [SerializeField, Min(0f)] private float speed = 5f;
+    [SerializeField, Min(0f)] private float jumpHeight = 1.8f;
+    [SerializeField, Min(0f)] private float coyoteTime = 0.1f;
+    [SerializeField, Min(0f)] private float jumpBuffer = 0.12f;
+    [SerializeField, Min(1f)] private float fallMultiplier = 2.2f;
+
+    public bool IsGrounded => isGrounded;
+
+    private Rigidbody rb;
+    private Transform cam;
+    private InputAction moveAction;
+    private InputAction jumpAction;
+    private Vector3 move;
+    private bool jumpQueued;
+    private bool isGrounded;
+    private float lastGroundedTime = -1f;
+    private float lastPressedTime = -1f;
+    private readonly HashSet<Collider> groundContacts = new HashSet<Collider>();
+    private Vector3 groundPoint;
+    private Vector3 groundNormal = Vector3.up;
+    private bool hasGroundPoint;
+
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+        cam = Camera.main.transform;
+        rb.freezeRotation = true;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        moveAction = InputSystem.actions.FindAction("Player/Move", true);
+        jumpAction = InputSystem.actions.FindAction("Player/Jump", true);
+    }
+
+    private void OnEnable()
+    {
+        moveAction.Enable();
+        jumpAction.Enable();
+    }
+
+    private void OnDisable()
+    {
+        // These project-wide actions are shared with the next player on scene reload.
+        // Disabling this component already stops it from reading input.
+        move = Vector3.zero;
+        jumpQueued = false;
+        groundContacts.Clear();
+        isGrounded = false;
+        lastGroundedTime = lastPressedTime = -1f;
+    }
+
+    private void Update()
+    {
+        // Read input every rendered frame, so a short Space press is not lost.
+        Vector2 input = moveAction.ReadValue<Vector2>();
+        // Lecture 05: project the camera axes onto the ground before combining input.
+        Vector3 forward = cam.forward;
+        forward.y = 0f;
+        forward.Normalize();
+        Vector3 right = cam.right;
+        right.y = 0f;
+        right.Normalize();
+        move = Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
+        isGrounded = groundContacts.Count > 0;
+
+        // Stamp only while supported and not departing the surface after a jump.
+        // Dot uses the ground normal so walking uphill still counts as supported.
+        if (isGrounded && !jumpQueued && Vector3.Dot(rb.linearVelocity, groundNormal) <= 0.1f)
+            lastGroundedTime = Time.time;
+
+        if (jumpAction.WasPressedThisFrame())
+            lastPressedTime = Time.time;
+
+        bool canJump = lastGroundedTime >= 0f && Time.time - lastGroundedTime <= coyoteTime;
+        bool wantJump = lastPressedTime >= 0f && Time.time - lastPressedTime <= jumpBuffer;
+        if (!jumpQueued && canJump && wantJump)
+        {
+            jumpQueued = true;
+            lastGroundedTime = lastPressedTime = -1f;
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        // Set only horizontal velocity; gravity and jumping own the Y component.
+        rb.linearVelocity = new Vector3(move.x * speed, rb.linearVelocity.y, move.z * speed);
+
+        if (jumpQueued)
+        {
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
+            float launchSpeed = Mathf.Sqrt(2f * -Physics.gravity.y * jumpHeight);
+            // Impulse = mass * change in velocity, so changing mass preserves height.
+            rb.AddForce(Vector3.up * rb.mass * launchSpeed, ForceMode.Impulse);
+            jumpQueued = false;
+            groundContacts.Clear();
+            isGrounded = false;
+        }
+
+        // Normal gravity handles ascent; add only the extra acceleration on descent.
+        if (rb.linearVelocity.y < 0f)
+            rb.AddForce(Physics.gravity * (fallMultiplier - 1f), ForceMode.Acceleration);
+    }
+
+    private void OnCollisionEnter(Collision collision) => UpdateGroundContact(collision);
+    private void OnCollisionStay(Collision collision) => UpdateGroundContact(collision);
+
+    private void OnCollisionExit(Collision collision)
+    {
+        groundContacts.Remove(collision.collider);
+        isGrounded = groundContacts.Count > 0;
+    }
+
+    private void UpdateGroundContact(Collision collision)
+    {
+        // Lecture 04: an upward-facing contact counts as ground, including ramps.
+        foreach (ContactPoint contact in collision.contacts)
+        {
+            if (contact.normal.y > 0.5f)
+            {
+                groundContacts.Add(collision.collider);
+                groundPoint = contact.point;
+                groundNormal = contact.normal;
+                hasGroundPoint = true;
+                isGrounded = true;
+                return;
+            }
+        }
+
+        groundContacts.Remove(collision.collider);
+        isGrounded = groundContacts.Count > 0;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = isGrounded ? Color.green : Color.red;
+        Vector3 point = hasGroundPoint ? groundPoint : transform.position + Vector3.down;
+        Gizmos.DrawWireSphere(point, 0.1f);
+        Gizmos.DrawRay(point, groundNormal * 0.75f);
+    }
+}
